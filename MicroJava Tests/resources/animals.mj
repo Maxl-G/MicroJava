@@ -1,0 +1,54 @@
+program Animals
+  class Animal {
+    char[] name;
+  }
+{
+  void setName(Animal a, char[] name) {
+    a.name = name;
+  }
+  void aPrint(Animal a)
+    int i, l;
+    char c;
+  {
+    l = len(a.name);
+    i = 0;
+    while (i < l) {
+      print(a.name[i]);
+      i += 1;
+    }
+  }
+  void main()
+    int a;
+    Animal[] animals;
+    char[] cat;
+    char[] dog;
+    char[] octopus;
+  {
+    cat = new char[3];
+    cat[0] = 'c';
+    cat[1] = 'a';
+    cat[2] = 't';
+    dog = new char[3];
+    dog[0] = 'd';
+    dog[1] = 'o';
+    dog[2] = 'g';
+    octopus = new char[7];
+    octopus[0] = 'o';
+    octopus[1] = 'c';
+    octopus[2] = 't';
+    octopus[3] = 'o';
+    octopus[4] = 'p';
+    octopus[5] = 'u';
+    octopus[6] = 's';
+
+    animals = new Animal[3];
+    animals[0] = new Animal;
+    animals[1] = new Animal;
+    animals[2] = new Animal;
+    setName(animals[0],cat);
+    setName(animals[1],dog);
+    setName(animals[2],octopus);
+    read(a);
+    aPrint(animals[a]);
+  }
+}
