@@ -51,7 +51,7 @@ public class Scanner {
 
     line = 1;
     col = 0;
-    nextCh(); // read 1st char into ch, incr col to 1
+    nextCh(); // read 1st char into ch, increase col to 1
   }
 
   /**
@@ -70,7 +70,6 @@ public class Scanner {
   // TODO Exercise 1: Implement Scanner (next() + private helper methods)
   // ================================================
 
-  // TODO Exercise 1: Keywords
   /**
    * Mapping from keyword names to appropriate token codes.
    */
@@ -78,24 +77,301 @@ public class Scanner {
 
   static {
     keywords = new HashMap<>();
+    keywords.put("break", break_);
+    keywords.put("class", class_);
+    keywords.put("else", else_);
+    keywords.put("final", final_);
+    keywords.put("if", if_);
+    keywords.put("new", new_);
+    keywords.put("print", print);
+    keywords.put("program", program);
+    keywords.put("read", read);
+    keywords.put("return", return_);
+    keywords.put("void", void_);
+    keywords.put("while", while_);
   }
 
   /**
    * Returns next token. To be used by parser.
    */
   public Token next() {
-    // TODO Exercise 1: implementation of next method
-    return null;
+    while (Character.isWhitespace(ch)){
+      nextCh();
+    }
+    Token t = new Token(none, line, col);
+    switch (ch) {
+      case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' -> readName(t);
+      case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> readNumber(t);
+      case '\'' -> readCharCon(t);
+      case '+' -> {
+        nextCh();
+        if (ch == '+') {
+          t.kind = pplus;
+          nextCh();
+        } else if (ch == '=') {
+          t.kind = plusas;
+          nextCh();
+        } else {
+          t.kind = plus;
+        }
+      }
+      case '-' -> {
+        nextCh();
+        if (ch == '-') {
+          t.kind = mminus;
+          nextCh();
+        } else if (ch == '=') {
+          t.kind = minusas;
+          nextCh();
+        } else {
+          t.kind = minus;
+        }
+      }
+      case '*' -> {
+        nextCh();
+        if (ch == '*') {
+          t.kind = exp;
+          nextCh();
+        } else if (ch == '=') {
+          t.kind = timesas;
+          nextCh();
+        } else {
+          t.kind = times;
+        }
+      }
+      case '/' -> {
+        nextCh();
+        if (ch == '*') {
+          nextCh();
+          skipComment(t);
+          return next();
+        } else if (ch == '=') {
+          t.kind = slashas;
+          nextCh();
+        } else {
+          t.kind = slash;
+        }
+      }
+      case '%' -> {
+        nextCh();
+        if (ch == '=') {
+          t.kind = remas;
+          nextCh();
+        } else {
+          t.kind = rem;
+        }
+      }
+      case '=' -> {
+        nextCh();
+        if (ch == '=') {
+          t.kind = eql;
+          nextCh();
+        } else {
+          t.kind = assign;
+        }
+      }
+      case '!' -> {
+        nextCh();
+        if (ch == '=') {
+          t.kind = neq;
+          nextCh();
+        } else {
+          error(t, INVALID_CHAR, '!');
+        }
+      }
+      case '>' -> {
+        nextCh();
+        if (ch == '=') {
+          t.kind = geq;
+          nextCh();
+        } else {
+          t.kind = gtr;
+        }
+      }
+      case '<' -> {
+        nextCh();
+        if (ch == '=') {
+          t.kind = leq;
+          nextCh();
+        } else {
+          t.kind = lss;
+        }
+      }
+      case '&' -> {
+        nextCh();
+        if (ch == '&') {
+          t.kind = and;
+          nextCh();
+        } else {
+          error(t, INVALID_CHAR, '&');
+        }
+      }
+      case '|' -> {
+        nextCh();
+        if (ch == '|') {
+          t.kind = or;
+          nextCh();
+        } else {
+          error(t, INVALID_CHAR, '|');
+        }
+      }
+      case '(' -> {
+        t.kind = lpar;
+        nextCh();
+      }
+      case ')' -> {
+        t.kind = rpar;
+        nextCh();
+      }
+      case '[' -> {
+        t.kind = lbrack;
+        nextCh();
+      }
+      case ']' -> {
+        t.kind = rbrack;
+        nextCh();
+      }
+      case '{' -> {
+        t.kind = lbrace;
+        nextCh();
+      }
+      case '}' -> {
+        t.kind = rbrace;
+        nextCh();
+      }
+      case ';' -> {
+        t.kind = semicolon;
+        nextCh();
+      }
+      case ',' -> {
+        t.kind = comma;
+        nextCh();
+      }
+      case '.' -> {
+        t.kind = period;
+        nextCh();
+      }
+      case EOF -> t.kind = eof;
+      default -> {
+        error(t, INVALID_CHAR, ch);
+        nextCh();
+      }
+    }
+    return t;
   }
-
-  // TODO Exercise 1: private helper methods used by next(), as discussed in the exercise
 
   /**
    * Reads next character from input stream into ch. Keeps pos, line and col
    * in sync with reading position.
    */
   private void nextCh() {
-    // TODO Exercise 1
+    try {
+      ch = (char) in.read();
+      if (ch == LF){
+        line++;
+        col = 0;
+      } else {
+        col++;
+      }
+    } catch (IOException e) {
+      ch = EOF;
+    }
+  }
+
+  private void readName(Token t){
+    StringBuilder sb = new StringBuilder();
+    while (isLetter(ch) || isDigit(ch) || ch == '_'){
+      sb.append(ch);
+      nextCh();
+    }
+    t.val = sb.toString();
+    t.kind = keywords.getOrDefault(t.val, ident);
+  }
+
+  private void readNumber(Token t){
+    StringBuilder sb = new StringBuilder();
+    while (isDigit(ch)){
+      sb.append(ch);
+      nextCh();
+    }
+
+    t.kind = number;
+    t.val = sb.toString();
+    try {
+      t.numVal = Integer.parseInt(t.val);
+    } catch(NumberFormatException e){
+      error(t, BIG_NUM, t.val);
+    }
+  }
+
+  private void readCharCon(Token t){
+    nextCh();
+    t.kind = charConst;
+
+    if (ch == '\''){
+      t.val = "";
+      error(t, EMPTY_CHARCONST);
+      nextCh();
+    } else if (ch == LF || ch == '\r'){
+      t.val = String.valueOf(ch);
+      error(t, ILLEGAL_LINE_END);
+      nextCh();
+    } else if (ch == EOF){
+      t.val = "EOF";
+      error(t, EOF_IN_CHAR);
+    } else if (ch == '\\') {
+      nextCh();
+      t.val = "\\" + ch;
+      if (ch == 'r'){
+        t.numVal = '\r';
+      } else if (ch == 'n'){
+        t.numVal = LF;
+      } else if (ch == '\''){
+        t.numVal = '\'';
+      } else if (ch == '\\'){
+        t.numVal = '\\';
+      } else {
+        error(t, UNDEFINED_ESCAPE, ch);
+      }
+      checkIfCharConstIsClosed(t);
+    } else {
+      t.val = String.valueOf(ch);
+      t.numVal = ch;
+      checkIfCharConstIsClosed(t);
+    }
+  }
+
+  private void checkIfCharConstIsClosed(Token t){
+    nextCh();
+    if (ch == '\''){
+      nextCh();
+    } else {
+      error(t, MISSING_QUOTE);
+    }
+  }
+
+  private void skipComment(Token t){
+    int depth = 1;
+    while (depth > 0){
+      if (ch == '/'){
+        nextCh();
+        if (ch == '*'){
+          nextCh();
+          depth++;
+        }
+      } else if (ch == '*'){
+        nextCh();
+        if (ch == '/'){
+          nextCh();
+          depth--;
+        }
+      } else if (ch == EOF){
+        error(t, EOF_IN_COMMENT);
+        break;
+      } else {
+        nextCh();
+      }
+    }
   }
 
   // ...
