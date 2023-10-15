@@ -65,11 +65,6 @@ public class Scanner {
     t.val = null;
   }
 
-
-  // ================================================
-  // TODO Exercise 1: Implement Scanner (next() + private helper methods)
-  // ================================================
-
   /**
    * Mapping from keyword names to appropriate token codes.
    */
