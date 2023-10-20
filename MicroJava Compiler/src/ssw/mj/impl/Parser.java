@@ -4,8 +4,10 @@ import ssw.mj.Errors;
 import ssw.mj.Errors.Message;
 import ssw.mj.scanner.Token;
 
-import static ssw.mj.Errors.Message.TOKEN_EXPECTED;
-import static ssw.mj.scanner.Token.Kind.none;
+import java.util.EnumSet;
+
+import static ssw.mj.Errors.Message.*;
+import static ssw.mj.scanner.Token.Kind.*;
 
 public final class Parser {
 
@@ -97,10 +99,14 @@ public final class Parser {
    * Starts the analysis.
    */
   public void parse() {
-    // TODO Exercise 2: Implementation of parser
+    scan();
+    program();
+    check(eof);
   }
 
   // ===============================================
+
+
   // TODO Exercise 2: Implementation of parser
   // TODO Exercise 3: Error recovery methods
   // TODO Exercise 4: Symbol table handling
@@ -110,11 +116,372 @@ public final class Parser {
   // TODO Exercise 3: Error distance
 
   // TODO Exercise 2 + Exercise 3: Sets to handle certain first, follow, and recover sets
-
+  EnumSet<Token.Kind> startOfStatement = EnumSet.of(ident, if_, while_, break_, return_, read, print, lbrace, semicolon);
+  EnumSet<Token.Kind> startOfAssignop = EnumSet.of(assign, plusas, minusas, timesas, slashas, remas);
+  EnumSet<Token.Kind> startOfRelop = EnumSet.of(eql, neq, gtr, geq, lss, leq);
+  EnumSet<Token.Kind> startOfFactor = EnumSet.of(ident, number, charConst, new_, lpar);
   // ---------------------------------
 
   // TODO Exercise 2: One top-down parsing method per production
 
+  private void program(){
+    check(program);
+    check(ident);
+    while (true){
+      if (sym == final_){
+        constDecl();
+      } else if (sym == ident){
+        varDecl();
+      } else if (sym == class_){
+        classDecl();
+      } else {
+        break;
+      }
+    }
+    check(lbrace);
+    while (sym == ident || sym == void_){
+      methodDecl();
+    }
+    check(rbrace);
+  }
+
+  private void constDecl(){
+    check (final_);
+    type();
+    check(ident);
+    check(assign);
+    if (sym == number){
+      scan();
+    } else if (sym == charConst){
+      scan();
+    } else {
+      error(CONST_DECL);
+    }
+    check(semicolon);
+  }
+
+  private void varDecl(){
+    type();
+    check(ident);
+    while (sym == comma){
+      scan();
+      check(ident);
+    }
+    check(semicolon);
+  }
+
+  private void classDecl(){
+    check(class_);
+    check(ident);
+    check(lbrace);
+    while (sym == ident){
+      varDecl();
+    }
+    check(rbrace);
+  }
+
+  private void methodDecl(){
+    if (sym == ident){
+      type();
+    } else if (sym == void_){
+      scan();
+    } else {
+      error(CONST_DECL);
+    }
+    check(ident);
+    check(lpar);
+    if (sym == ident){
+      formPars();
+    }
+    check(rpar);
+    while (sym == ident){
+      varDecl();
+    }
+    block();
+  }
+
+  private void formPars(){
+    type();
+    check(ident);
+    while (sym == comma){
+      scan();
+      type();
+      check(ident);
+    }
+  }
+
+  private void type(){
+    check(ident);
+    if (sym == lbrack){
+      scan();
+      check(rbrack);
+    }
+  }
+
+  private void block(){
+    check(lbrace);
+    while (startOfStatement.contains(sym)){
+      statement();
+    }
+    check(rbrace);
+  }
+
+  private void statement(){
+    switch(sym){
+      case ident:
+        designator();
+        if (startOfAssignop.contains(sym)){
+          assignop();
+          expr();
+        } else if (sym == lpar){
+          actPars();
+        } else if (sym == pplus){
+          scan();
+        } else if (sym == mminus){
+          scan();
+        } else {
+          error(DESIGN_FOLLOW);
+        }
+        check(semicolon);
+        break;
+      case if_:
+        scan();
+        check(lpar);
+        condition();
+        check(rpar);
+        statement();
+        if (sym == else_){
+          scan();
+          statement();
+        }
+        break;
+      case while_:
+        scan();
+        check(lpar);
+        condition();
+        check(rpar);
+        statement();
+        break;
+      case break_:
+        scan();
+        check(semicolon);
+        break;
+      case return_:
+        scan();
+        if (sym == minus || startOfFactor.contains(sym)){
+          expr();
+        }
+        check(semicolon);
+        break;
+      case read:
+        scan();
+        check(lpar);
+        designator();
+        check(rpar);
+        check(semicolon);
+        break;
+      case print:
+        scan();
+        check(lpar);
+        expr();
+        if (sym == comma){
+          scan();
+          check(number);
+        }
+        check(rpar);
+        check(semicolon);
+        break;
+      case lbrace:
+        block();
+        break;
+      case semicolon:
+        scan();
+        break;
+      default:
+        error(CONST_DECL);
+    }
+  }
+
+  private void assignop(){
+    switch(sym){
+      case assign:
+        scan();
+        break;
+      case plusas:
+        scan();
+        break;
+      case minusas:
+        scan();
+        break;
+      case timesas:
+        scan();
+        break;
+      case slashas:
+        scan();
+        break;
+      case remas:
+        scan();
+        break;
+      default:
+        error(ASSIGN_OP);
+    }
+  }
+
+  private void actPars(){
+    check(lpar);
+    if (sym == minus || startOfFactor.contains(sym)){
+      expr();
+      while (sym == comma){
+        scan();
+        expr();
+      }
+    }
+    check(rpar);
+  }
+
+  private void condition(){
+    condTerm();
+    while (sym == or){
+      scan();
+      condTerm();
+    }
+  }
+
+  private void condTerm(){
+    condFact();
+    while (sym == and){
+      scan();
+      condFact();
+    }
+  }
+
+  private void condFact(){
+    expr();
+    relop();
+    expr();
+  }
+
+  private void relop(){
+    switch (sym){
+      case eql:
+        scan();
+        break;
+      case neq:
+        scan();
+        break;
+      case gtr:
+        scan();
+        break;
+      case geq:
+        scan();
+        break;
+      case lss:
+        scan();
+        break;
+      case leq:
+        scan();
+        break;
+      default:
+        error(REL_OP);
+    }
+  }
+
+  private void expr(){
+    if (sym == minus){
+      scan();
+    }
+    term();
+    while (sym == plus || sym == minus) {
+      addop();
+      term();
+    }
+  }
+
+  private void term(){
+    factor();
+    while (true){
+      if (sym == times || sym == slash || sym == rem){
+        mulop();
+        factor();
+      } else if (sym == exp){
+        scan();
+        check(number);
+      } else {
+        break;
+      }
+    }
+  }
+
+  private void factor(){
+    switch (sym){
+      case ident:
+        designator();
+        if (sym == lpar){
+          actPars();
+        }
+        break;
+      case number:
+        scan();
+        break;
+      case charConst:
+        scan();
+        break;
+      case new_:
+        scan();
+        check(ident);
+        if (sym == lbrack){
+          scan();
+          expr();
+          check(rbrack);
+        }
+        break;
+      case lpar:
+        scan();
+        expr();
+        check(rpar);
+        break;
+      default:
+        error(INVALID_FACT);
+    }
+  }
+
+  private void designator(){
+    check(ident);
+    while (true){
+      if (sym == period){
+        scan();
+        check(ident);
+      } else if (sym == lbrack) {
+        scan();
+        expr();
+        check(rbrack);
+      } else {
+        break;
+      }
+    }
+  }
+
+  private void addop(){
+    if (sym == plus){
+      scan();
+    } else if (sym == minus){
+      scan();
+    } else {
+      error(ADD_OP);
+    }
+  }
+
+  private void mulop(){
+    if (sym == times){
+      scan();
+    } else if (sym == slash){
+      scan();
+    } else if (sym == rem){
+      scan();
+    } else {
+      error(MUL_OP);
+    }
+  }
   // ------------------------------------
 
   // TODO Exercise 3: Error recovery methods: recoverDecl, recoverMethodDecl and recoverStat
