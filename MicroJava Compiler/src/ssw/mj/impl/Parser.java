@@ -186,7 +186,7 @@ public final class Parser {
     } else if (sym == void_){
       scan();
     } else {
-      error(CONST_DECL);
+      error(CONST_DECL);//todo
     }
     check(ident);
     check(lpar);
