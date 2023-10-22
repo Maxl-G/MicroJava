@@ -117,7 +117,6 @@ public final class Parser {
   // Exercise 3: Sets to handle certain first, follow, and recover sets
   EnumSet<Token.Kind> startOfStatement = EnumSet.of(ident, if_, while_, break_, return_, read, print, lbrace, semicolon);
   EnumSet<Token.Kind> startOfAssignop = EnumSet.of(assign, plusas, minusas, timesas, slashas, remas);
-  EnumSet<Token.Kind> startOfRelop = EnumSet.of(eql, neq, gtr, geq, lss, leq);
   EnumSet<Token.Kind> startOfFactor = EnumSet.of(ident, number, charConst, new_, lpar);
   // ---------------------------------
 
