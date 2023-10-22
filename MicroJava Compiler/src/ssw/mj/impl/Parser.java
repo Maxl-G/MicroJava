@@ -107,7 +107,6 @@ public final class Parser {
   // ===============================================
 
 
-  // TODO Exercise 2: Implementation of parser
   // TODO Exercise 3: Error recovery methods
   // TODO Exercise 4: Symbol table handling
   // TODO Exercise 5-6: Code generation
@@ -115,14 +114,12 @@ public final class Parser {
 
   // TODO Exercise 3: Error distance
 
-  // TODO Exercise 2 + Exercise 3: Sets to handle certain first, follow, and recover sets
+  // Exercise 3: Sets to handle certain first, follow, and recover sets
   EnumSet<Token.Kind> startOfStatement = EnumSet.of(ident, if_, while_, break_, return_, read, print, lbrace, semicolon);
   EnumSet<Token.Kind> startOfAssignop = EnumSet.of(assign, plusas, minusas, timesas, slashas, remas);
   EnumSet<Token.Kind> startOfRelop = EnumSet.of(eql, neq, gtr, geq, lss, leq);
   EnumSet<Token.Kind> startOfFactor = EnumSet.of(ident, number, charConst, new_, lpar);
   // ---------------------------------
-
-  // TODO Exercise 2: One top-down parsing method per production
 
   private void program(){
     check(program);
