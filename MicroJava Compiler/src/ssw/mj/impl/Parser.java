@@ -186,7 +186,7 @@ public final class Parser {
     } else if (sym == void_){
       scan();
     } else {
-      error(CONST_DECL);//todo
+      error(INVALID_METH_DECL);
     }
     check(ident);
     check(lpar);
@@ -298,7 +298,7 @@ public final class Parser {
         scan();
         break;
       default:
-        error(CONST_DECL);
+        error(INVALID_STAT);
     }
   }
 
