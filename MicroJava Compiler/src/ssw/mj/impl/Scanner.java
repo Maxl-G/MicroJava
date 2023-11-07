@@ -72,18 +72,18 @@ public class Scanner {
 
   static {
     keywords = new HashMap<>();
-    keywords.put("break", break_);
-    keywords.put("class", class_);
-    keywords.put("else", else_);
-    keywords.put("final", final_);
-    keywords.put("if", if_);
-    keywords.put("new", new_);
-    keywords.put("print", print);
-    keywords.put("program", program);
-    keywords.put("read", read);
-    keywords.put("return", return_);
-    keywords.put("void", void_);
-    keywords.put("while", while_);
+    keywords.put(break_.label(), break_);
+    keywords.put(class_.label(), class_);
+    keywords.put(else_.label(), else_);
+    keywords.put(final_.label(), final_);
+    keywords.put(if_.label(), if_);
+    keywords.put(new_.label(), new_);
+    keywords.put(print.label(), print);
+    keywords.put(program.label(), program);
+    keywords.put(read.label(), read);
+    keywords.put(return_.label(), return_);
+    keywords.put(void_.label(), void_);
+    keywords.put(while_.label(), while_);
   }
 
   /**
@@ -275,20 +275,20 @@ public class Scanner {
 
   private void readName(Token t){
     StringBuilder sb = new StringBuilder();
-    while (isLetter(ch) || isDigit(ch) || ch == '_'){
+    do {
       sb.append(ch);
       nextCh();
-    }
+    } while (isLetter(ch) || isDigit(ch) || ch == '_');
     t.val = sb.toString();
     t.kind = keywords.getOrDefault(t.val, ident);
   }
 
   private void readNumber(Token t){
     StringBuilder sb = new StringBuilder();
-    while (isDigit(ch)){
+    do {
       sb.append(ch);
       nextCh();
-    }
+    } while (isDigit(ch));
 
     t.kind = number;
     t.val = sb.toString();
@@ -347,7 +347,7 @@ public class Scanner {
 
   private void skipComment(Token t){
     int depth = 1;
-    while (depth > 0){
+    do {
       if (ch == '/'){
         nextCh();
         if (ch == '*'){
@@ -366,7 +366,7 @@ public class Scanner {
       } else {
         nextCh();
       }
-    }
+    } while (depth > 0);
   }
 
   // ...
