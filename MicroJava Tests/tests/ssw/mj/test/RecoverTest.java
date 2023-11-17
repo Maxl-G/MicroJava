@@ -180,5 +180,4 @@ public class RecoverTest extends CompilerTestCaseSupport {
     parseAndVerify();
   }
 
-
 }

@@ -89,8 +89,6 @@ public final class Parser {
    * Adds error message to the list of errors.
    */
   public void error(Message msg, Object... msgParams) {
-    // TODO Exercise 3: Replace panic mode with error recovery (i.e., keep track of error distance)
-    // TODO Exercise 3: Hint: Replacing panic mode also affects scan() method
     if (errorDistance >= MIN_ERROR_DISTANCE){
       scanner.errors.error(la.line, la.col, msg, msgParams);
     }
@@ -108,48 +106,24 @@ public final class Parser {
 
   // ===============================================
 
-
-  // TODO Exercise 3: Error recovery methods
-  private void recoverDeclaration(){
-    error(INVALID_DECL);
-    do {
-      scan();
-    } while (!recoverDeclSet.contains(sym));
-    errorDistance = 0;
-  }
-
-  private void recoverMethod(){
-    error(INVALID_METH_DECL);
-    do {
-      scan();
-    } while (sym != ident && sym != void_ && sym != eof);
-    errorDistance = 0;
-  }
-
-  private void recoverStatement(){
-    error(INVALID_STAT);
-    do {
-      scan();
-    } while (!recoverStatementSet.contains(sym));
-    errorDistance = 0;
-  }
-
   // TODO Exercise 4: Symbol table handling
   // TODO Exercise 5-6: Code generation
   // ===============================================
 
-  // TODO Exercise 3: Error distance
+  // Error distance
   private final int MIN_ERROR_DISTANCE = 3;
   private int errorDistance = MIN_ERROR_DISTANCE;
 
-  // TODO Exercise 3: Sets to handle certain first, follow, and recover sets
+  // Sets to handle certain first, follow, and recover sets
   private final EnumSet<Token.Kind> startOfStatement = EnumSet.of(ident, if_, while_, break_, return_, read, print, lbrace, semicolon);
   private final EnumSet<Token.Kind> startOfAssignop = EnumSet.of(assign, plusas, minusas, timesas, slashas, remas);
   private final EnumSet<Token.Kind> startOfFactor = EnumSet.of(ident, number, charConst, new_, lpar);
 
   private final EnumSet<Token.Kind> recoverDeclSet = EnumSet.of(final_, ident, class_, rbrace, eof);
-  private final EnumSet<Token.Kind> recoverStatementSet = EnumSet.of(if_, while_, break_, return_, read, print, semicolon);
+  private final EnumSet<Token.Kind> recoverStatementSet = EnumSet.of(if_, while_, break_, return_, read, print, semicolon, eof);
+
   // ---------------------------------
+  // One top-down parsing method per production
 
   private void program(){
     check(program);
@@ -171,11 +145,10 @@ public final class Parser {
     while (true){
       if (sym == ident || sym == void_) {
         methodDecl();
-      } else if (sym == rbrace || sym == eof){
+      } else if (sym == rbrace || sym == eof) {
         break;
       } else {
-        error(INVALID_METH_DECL);
-        //recoverMethod();
+        recoverMethod();
       }
     }
     check(rbrace);
@@ -217,6 +190,7 @@ public final class Parser {
   }
 
   private void methodDecl(){
+
     if (sym == ident){
       type();
     } else if (sym == void_){
@@ -256,6 +230,7 @@ public final class Parser {
 
   private void block(){
     check(lbrace);
+
     while (true){
       if (startOfStatement.contains(sym)){
         statement();
@@ -526,7 +501,31 @@ public final class Parser {
   }
   // ------------------------------------
 
-  // TODO Exercise 3: Error recovery methods: recoverDecl, recoverMethodDecl and recoverStat
+  // Error recovery methods: recoverDecl, recoverMethodDecl and recoverStat
+
+  private void recoverDeclaration(){
+    error(INVALID_DECL);
+    do {
+      scan();
+    } while (!recoverDeclSet.contains(sym));
+    errorDistance = 0;
+  }
+
+  private void recoverMethod(){
+    error(INVALID_METH_DECL);
+    do {
+      scan();
+    } while (sym != ident && sym != void_ && sym != eof);
+    errorDistance = 0;
+  }
+
+  private void recoverStatement(){
+    error(INVALID_STAT);
+    do {
+      scan();
+    } while (!recoverStatementSet.contains(sym));
+    errorDistance = 0;
+  }
 
   // ====================================
   // ====================================
