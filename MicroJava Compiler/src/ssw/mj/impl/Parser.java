@@ -1,6 +1,5 @@
 package ssw.mj.impl;
 
-import ssw.mj.Errors;
 import ssw.mj.Errors.Message;
 import ssw.mj.scanner.Token;
 
@@ -72,6 +71,7 @@ public final class Parser {
     t = la;
     la = scanner.next();
     sym = la.kind;
+    errorDistance++;
   }
 
   /**
@@ -91,8 +91,10 @@ public final class Parser {
   public void error(Message msg, Object... msgParams) {
     // TODO Exercise 3: Replace panic mode with error recovery (i.e., keep track of error distance)
     // TODO Exercise 3: Hint: Replacing panic mode also affects scan() method
-    scanner.errors.error(la.line, la.col, msg, msgParams);
-    throw new Errors.PanicMode();
+    if (errorDistance >= MIN_ERROR_DISTANCE){
+      scanner.errors.error(la.line, la.col, msg, msgParams);
+    }
+    errorDistance = 0;
   }
 
   /**
@@ -108,16 +110,30 @@ public final class Parser {
 
 
   // TODO Exercise 3: Error recovery methods
+  private void recoverDeclaration(){
+    error(INVALID_DECL);
+    do {
+      scan();
+    } while (!recoverDeclSet.contains(sym));
+    errorDistance = 0;
+  }
+
+
+
   // TODO Exercise 4: Symbol table handling
   // TODO Exercise 5-6: Code generation
   // ===============================================
 
   // TODO Exercise 3: Error distance
+  private final int MIN_ERROR_DISTANCE = 3;
+  private int errorDistance = MIN_ERROR_DISTANCE;
 
-  // Exercise 3: Sets to handle certain first, follow, and recover sets
-  EnumSet<Token.Kind> startOfStatement = EnumSet.of(ident, if_, while_, break_, return_, read, print, lbrace, semicolon);
-  EnumSet<Token.Kind> startOfAssignop = EnumSet.of(assign, plusas, minusas, timesas, slashas, remas);
-  EnumSet<Token.Kind> startOfFactor = EnumSet.of(ident, number, charConst, new_, lpar);
+  // TODO Exercise 3: Sets to handle certain first, follow, and recover sets
+  private final EnumSet<Token.Kind> startOfStatement = EnumSet.of(ident, if_, while_, break_, return_, read, print, lbrace, semicolon);
+  private final EnumSet<Token.Kind> startOfAssignop = EnumSet.of(assign, plusas, minusas, timesas, slashas, remas);
+  private final EnumSet<Token.Kind> startOfFactor = EnumSet.of(ident, number, charConst, new_, lpar);
+
+  private final EnumSet<Token.Kind> recoverDeclSet = EnumSet.of(final_, ident, class_, rbrace, eof);
   // ---------------------------------
 
   private void program(){
@@ -130,8 +146,10 @@ public final class Parser {
         varDecl();
       } else if (sym == class_){
         classDecl();
-      } else {
+      } else if (sym == lbrace || sym == eof){
         break;
+      } else {
+        recoverDeclaration();
       }
     }
     check(lbrace);
