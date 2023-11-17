@@ -179,4 +179,6 @@ public class RecoverTest extends CompilerTestCaseSupport {
     expectError(4, 3, Message.TOKEN_EXPECTED, "{");
     parseAndVerify();
   }
+
+
 }

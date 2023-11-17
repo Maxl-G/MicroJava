@@ -118,7 +118,21 @@ public final class Parser {
     errorDistance = 0;
   }
 
+  private void recoverMethod(){
+    error(INVALID_METH_DECL);
+    do {
+      scan();
+    } while (sym != ident && sym != void_ && sym != eof);
+    errorDistance = 0;
+  }
 
+  private void recoverStatement(){
+    error(INVALID_STAT);
+    do {
+      scan();
+    } while (!recoverStatementSet.contains(sym));
+    errorDistance = 0;
+  }
 
   // TODO Exercise 4: Symbol table handling
   // TODO Exercise 5-6: Code generation
@@ -134,6 +148,7 @@ public final class Parser {
   private final EnumSet<Token.Kind> startOfFactor = EnumSet.of(ident, number, charConst, new_, lpar);
 
   private final EnumSet<Token.Kind> recoverDeclSet = EnumSet.of(final_, ident, class_, rbrace, eof);
+  private final EnumSet<Token.Kind> recoverStatementSet = EnumSet.of(if_, while_, break_, return_, read, print, semicolon);
   // ---------------------------------
 
   private void program(){
@@ -153,8 +168,15 @@ public final class Parser {
       }
     }
     check(lbrace);
-    while (sym == ident || sym == void_){
-      methodDecl();
+    while (true){
+      if (sym == ident || sym == void_) {
+        methodDecl();
+      } else if (sym == rbrace || sym == eof){
+        break;
+      } else {
+        error(INVALID_METH_DECL);
+        //recoverMethod();
+      }
     }
     check(rbrace);
   }
@@ -234,8 +256,14 @@ public final class Parser {
 
   private void block(){
     check(lbrace);
-    while (startOfStatement.contains(sym)){
-      statement();
+    while (true){
+      if (startOfStatement.contains(sym)){
+        statement();
+      } else if (sym == rbrace || sym == eof){
+        break;
+      } else {
+        recoverStatement();
+      }
     }
     check(rbrace);
   }
