@@ -2,6 +2,8 @@ package ssw.mj.impl;
 
 import ssw.mj.Errors.Message;
 import ssw.mj.scanner.Token;
+import ssw.mj.symtab.Obj;
+import ssw.mj.symtab.Struct;
 
 import java.util.EnumSet;
 
@@ -106,7 +108,6 @@ public final class Parser {
 
   // ===============================================
 
-  // TODO Exercise 4: Symbol table handling
   // TODO Exercise 5-6: Code generation
   // ===============================================
 
@@ -128,6 +129,8 @@ public final class Parser {
   private void program(){
     check(program);
     check(ident);
+    Obj progObj = tab.insert(Obj.Kind.Prog, t.val, Tab.noType);
+    tab.openScope();
     while (true){
       if (sym == final_){
         constDecl();
@@ -141,6 +144,9 @@ public final class Parser {
         recoverDeclaration();
       }
     }
+    if (tab.curScope.nVars() > MAX_GLOBALS){
+      error(TOO_MANY_GLOBALS);
+    }
     check(lbrace);
     while (true){
       if (sym == ident || sym == void_) {
@@ -152,17 +158,29 @@ public final class Parser {
       }
     }
     check(rbrace);
+
+    progObj.locals = tab.curScope.locals();
+    tab.closeScope();
   }
 
   private void constDecl(){
     check (final_);
-    type();
+    Struct type = type();
     check(ident);
+    Obj constObj = tab.insert(Obj.Kind.Con, t.val, type);
     check(assign);
     if (sym == number){
+      if (type.kind != Struct.Kind.Int){
+        error(CONST_TYPE);
+      }
       scan();
+      constObj.val = t.numVal;
     } else if (sym == charConst){
+      if (type.kind != Struct.Kind.Char){
+        error(CONST_TYPE);
+      }
       scan();
+      constObj.val = t.numVal;
     } else {
       error(CONST_DECL);
     }
@@ -170,11 +188,13 @@ public final class Parser {
   }
 
   private void varDecl(){
-    type();
+    Struct type = type();
     check(ident);
+    tab.insert(Obj.Kind.Var, t.val, type);
     while (sym == comma){
       scan();
       check(ident);
+      tab.insert(Obj.Kind.Var, t.val, type);
     }
     check(semicolon);
   }
@@ -182,50 +202,86 @@ public final class Parser {
   private void classDecl(){
     check(class_);
     check(ident);
+    Obj c = tab.insert(Obj.Kind.Type, t.val, new Struct(Struct.Kind.Class));
     check(lbrace);
+    tab.openScope();
     while (sym == ident){
       varDecl();
     }
+    if (tab.curScope.nVars() > MAX_FIELDS){
+      error(TOO_MANY_FIELDS);
+    }
+    c.type.fields = tab.curScope.locals();
+    tab.closeScope();
     check(rbrace);
   }
 
-  private void methodDecl(){
-
+  private Obj methodDecl(){
+    Struct type = Tab.noType;
     if (sym == ident){
-      type();
+      type = type();
     } else if (sym == void_){
       scan();
     } else {
       error(INVALID_METH_DECL);
     }
     check(ident);
+    Obj meth = tab.insert(Obj.Kind.Meth, t.val, type);
+    meth.adr = code.pc;
     check(lpar);
+    tab.openScope();
     if (sym == ident){
       formPars();
     }
+    meth.nPars = tab.curScope.nVars();
     check(rpar);
+    if (meth.name.equals("main")) {
+      if (type != Tab.noType){
+        error(MAIN_NOT_VOID);
+      }
+      if (meth.nPars != 0){
+        error(MAIN_WITH_PARAMS);
+      }
+    }
     while (sym == ident){
       varDecl();
     }
+    if (tab.curScope.nVars() > MAX_LOCALS){
+      error(TOO_MANY_LOCALS);
+    }
     block();
+
+    meth.locals = tab.curScope.locals();
+    tab.closeScope();
+
+    return meth;
   }
 
   private void formPars(){
-    type();
+    Struct type = type();
     check(ident);
+    tab.insert(Obj.Kind.Var, t.val, type);
     while (sym == comma){
       scan();
-      type();
+      type = type();
       check(ident);
+      tab.insert(Obj.Kind.Var, t.val, type);
     }
   }
 
-  private void type(){
+  private Struct type(){
     check(ident);
+    Obj o = tab.find(t.val);
+    if (o.kind != Obj.Kind.Type){
+      error(NO_TYPE);
+    }
+    Struct type = o.type;
     if (sym == lbrack){
       scan();
       check(rbrack);
+      type = new Struct(type);
     }
+    return type;
   }
 
   private void block(){
@@ -501,8 +557,7 @@ public final class Parser {
   }
   // ------------------------------------
 
-  // Error recovery methods: recoverDecl, recoverMethodDecl and recoverStat
-
+  // Error recovery methods
   private void recoverDeclaration(){
     error(INVALID_DECL);
     do {

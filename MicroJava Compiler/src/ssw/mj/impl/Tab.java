@@ -4,6 +4,8 @@ import ssw.mj.symtab.Obj;
 import ssw.mj.symtab.Scope;
 import ssw.mj.symtab.Struct;
 
+import java.util.Map;
+
 import static ssw.mj.Errors.Message.*;
 
 public final class Tab {
@@ -14,8 +16,7 @@ public final class Tab {
   public static final Struct charType = new Struct(Struct.Kind.Char);
   public static final Struct nullType = new Struct(Struct.Kind.Class);
 
-  // TODO Exercise 4: Assign universe objects in constructor
-  public final Obj noObj = null, chrObj = null, ordObj = null, lenObj = null;
+  public final Obj noObj, chrObj, ordObj, lenObj;
 
   /**
    * Only used for reporting errors.
@@ -33,37 +34,83 @@ public final class Tab {
 
   public Tab(Parser p) {
     parser = p;
+    noObj = new Obj(Obj.Kind.Var, "noObj", noType);
 
-    // TODO Exercise 4: set up "universe" (= predefined names)
     // opening scope (curLevel goes to -1, which is the universe level)
     openScope();
-    // TODO Exercise 4 ...
+
+    // set up "universe" (= predefined names)
+    insert(Obj.Kind.Type, "int", intType);
+    insert(Obj.Kind.Type, "char", charType);
+    insert(Obj.Kind.Con, "null", nullType);
+
+    chrObj = insert(Obj.Kind.Meth, "chr", charType);
+    openScope();
+    openScope();
+    insert(Obj.Kind.Var, "i", intType);
+    chrObj.locals = curScope.locals();
+    chrObj.nPars = curScope.nVars();
+    closeScope();
+    closeScope();
+
+    ordObj = insert(Obj.Kind.Meth, "ord", intType);
+    openScope();
+    openScope();
+    insert(Obj.Kind.Var, "ch", charType);
+    ordObj.locals = curScope.locals();
+    ordObj.nPars = curScope.nVars();
+    closeScope();
+    closeScope();
+
+    lenObj = insert(Obj.Kind.Meth, "len", intType);
+    openScope();
+    openScope();
+    insert(Obj.Kind.Var, "arr", new Struct(noType));
+    lenObj.locals = curScope.locals();
+    lenObj.nPars = curScope.nVars();
+    closeScope();
     closeScope();
   }
 
   // ===============================================
-  // TODO Exercise 4: implementation of symbol table
+  // implementation of symbol table
   // ===============================================
 
   public void openScope() {
-    // TODO Exercise 4
+    curScope = new Scope(curScope);
+    curLevel++;
   }
 
   public void closeScope() {
-    // TODO Exercise 4
+    curScope = curScope.outer();
+    curLevel--;
   }
 
   public Obj insert(Obj.Kind kind, String name, Struct type) {
-    // TODO Exercise 4
-    return null;
+    Obj obj = new Obj(kind, name, type);
+    if (kind == Obj.Kind.Var){
+      obj.adr = curScope.nVars();
+      obj.level = curLevel;
+    }
+
+    if (curScope.findLocal(name) != null) {
+      parser.error(DECL_NAME, name);
+    }
+    curScope.insert(obj);
+
+    return obj;
   }
 
   /**
    * Retrieves the object with <code>name</code> from the innermost scope.
    */
   public Obj find(String name) {
-    // TODO Exercise 4
-    return null;
+    Obj o = curScope.findGlobal(name);
+    if (o == null){
+      parser.error(NOT_FOUND, name);
+      return noObj;
+    }
+    return o;
   }
 
   /**
@@ -71,8 +118,12 @@ public final class Tab {
    * <code>type</code>.
    */
   public Obj findField(String name, Struct type) {
-    // TODO Exercise 4
-    return null;
+    Obj field = type.findField(name);
+    if (field == null){
+      parser.error(NO_FIELD, name);
+      return noObj;
+    }
+    return field;
   }
 
   // ===============================================
