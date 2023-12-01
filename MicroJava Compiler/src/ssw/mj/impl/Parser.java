@@ -306,14 +306,19 @@ public final class Parser {
         if (startOfAssignop.contains(sym)){
           assignop();
           expr();
-        } else if (sym == lpar){
-          actPars();
-        } else if (sym == pplus){
-          scan();
-        } else if (sym == mminus){
-          scan();
         } else {
-          error(DESIGN_FOLLOW);
+          switch(sym){
+            case lpar:
+              actPars();
+              break;
+            case pplus:
+              scan();
+              break;
+            case mminus:
+              scan();
+              break;
+            default: error(DESIGN_FOLLOW);
+          }
         }
         check(semicolon);
         break;
