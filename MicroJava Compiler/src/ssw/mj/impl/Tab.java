@@ -4,8 +4,6 @@ import ssw.mj.symtab.Obj;
 import ssw.mj.symtab.Scope;
 import ssw.mj.symtab.Struct;
 
-import java.util.Map;
-
 import static ssw.mj.Errors.Message.*;
 
 public final class Tab {
@@ -87,6 +85,9 @@ public final class Tab {
   }
 
   public Obj insert(Obj.Kind kind, String name, Struct type) {
+    if (name == null || name.isEmpty()){
+      return noObj;
+    }
     Obj obj = new Obj(kind, name, type);
     if (kind == Obj.Kind.Var){
       obj.adr = curScope.nVars();
