@@ -781,11 +781,13 @@ public class CodeGenerationTest extends CompilerTestCaseSupport {
   @Test
   public void methodCallBase() {
     init("program Test {" + LF + //
-            "  int calc() { return 2; }" + LF + // 3
-            "  void main() int i; {" + LF + //
-            "    i = calc() ** 2;" + LF + //
-            "  }" + LF + //
+            " int calc() { return 2; }" + LF + // 3
+            " void main() int i; {" + LF + //
+            " i = calc() ** 4;" + LF + //
+            " print(i);" + LF + //
+            " }" + LF + //
             "}");
+    addExpectedRun("16");
     parseAndVerify();
   }
 }

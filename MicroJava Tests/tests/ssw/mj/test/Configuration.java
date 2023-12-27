@@ -7,7 +7,7 @@ public class Configuration {
    * set to true to print expected and actual values of all testcases,
    * not only failing ones (prints expected errors, tokens, symbol table, code)
    */
-  public static final boolean ALSO_PRINT_SUCCESSFUL_TESTCASES = Boolean.getBoolean("microjava.testcaseOutput");
+  public static final boolean ALSO_PRINT_SUCCESSFUL_TESTCASES = true;// Boolean.getBoolean("microjava.testcaseOutput");
 
   /**
    * Set to true to print debug information of the interpreter. Equal to
@@ -16,7 +16,7 @@ public class Configuration {
    * This is a lot of output, some test cases might timeout, e.g.
    * CodeGenerationTest.fib
    */
-  public static final boolean PRINT_INTERPRETER_DEBUG_OUTPUT = Boolean.getBoolean("microjava.interpreterOutput");
+  public static final boolean PRINT_INTERPRETER_DEBUG_OUTPUT = true;//Boolean.getBoolean("microjava.interpreterOutput");
 
   /**
    * Determines the timeout after which a test case should fail automatically.

@@ -8,8 +8,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.EnumSet;
 
-import static ssw.mj.Errors.Message.NO_VAL;
+import static ssw.mj.Errors.Message.*;
+import static ssw.mj.Errors.Message.NO_INT_OPERAND;
 
 public final class Code {
 
@@ -236,11 +238,50 @@ public final class Code {
 
   // TODO Exercise 5: Various code generation methods such as load or assign
 
+
+
   /**
    * Load the operand x onto the expression stack.
    */
   public void load(Operand x) {
     // TODO Exercise 5
+    switch (x.kind){
+      case Con:
+        loadConst(x.val);
+        break;
+      case Local:
+        switch (x.adr){
+          case 0 -> put(OpCode.load_0);
+          case 1 -> put(OpCode.load_1);
+          case 2 -> put(OpCode.load_2);
+          case 3 -> put(OpCode.load_3);
+          default -> {
+            put(OpCode.load);
+            put(x.adr);
+          }
+        }
+        break;
+      case Static:
+        put(OpCode.getstatic);
+        put2(x.adr);
+        break;
+      case Stack:
+        break;
+      case Fld:
+        put(OpCode.getfield);
+        put2(x.adr);
+        break;
+      case Elem:
+        if (x.type == Tab.charType){
+          put(OpCode.baload);
+        } else {
+          put(OpCode.aload);
+        }
+        break;
+      default:
+        parser.error(NO_VAL);
+    }
+    x.kind = Operand.Kind.Stack;
   }
 
   /**
@@ -248,6 +289,13 @@ public final class Code {
    */
   public void inc(Operand x, int n) {
     // TODO Exercise 5
+    if (x.kind == Operand.Kind.Local && -128 <= n && n < 128){
+      put(OpCode.inc);
+      put(x.adr);
+      put(n);
+    } else {
+      assign(x, new Operand(n));
+    }
   }
 
   /**
@@ -255,6 +303,39 @@ public final class Code {
    */
   public void assign(Operand x, Operand y) {
     // TODO Exercise 5
+    load(y);
+    switch (x.kind) {
+      case Local:
+        switch (x.adr) {
+          case 0 -> put(OpCode.store_0);
+          case 1 -> put(OpCode.store_1);
+          case 2 -> put(OpCode.store_2);
+          case 3 -> put(OpCode.store_3);
+          default -> {
+            put(OpCode.store);
+            put(x.adr);
+          }
+        }
+        break;
+      case Static:
+        put(OpCode.putstatic);
+        put2(x.adr);
+        break;
+      case Fld:
+        put(OpCode.putfield);
+        put2(x.adr);
+        break;
+      case Elem:
+        if (x.type == Tab.charType) {
+          put(OpCode.bastore);
+        }
+        else {
+          put(OpCode.astore);
+        }
+        break;
+      default: parser.error(NO_VAL);
+    }
+
   }
 
   /**
@@ -262,6 +343,19 @@ public final class Code {
    */
   public void loadConst(int n) {
     // TODO Exercise 5
+    switch (n){
+      case -1 -> put(OpCode.const_m1);
+      case 0 -> put(OpCode.const_0);
+      case 1 -> put(OpCode.const_1);
+      case 2 -> put(OpCode.const_2);
+      case 3 -> put(OpCode.const_3);
+      case 4 -> put(OpCode.const_4);
+      case 5 -> put(OpCode.const_5);
+      default -> {
+        put(OpCode.const_);
+        put4(n);
+      }
+    }
   }
 
   /**
@@ -272,7 +366,11 @@ public final class Code {
 
     // TODO Exercise 5: Field accesses (such as x.y) or array accesses (such as arr[2]) on the left-hand side of
     // an compound assignment (e.g., arr[2] += 4) need to correctly use dup or dup2. Implement here.
-
+    if (x.kind == Operand.Kind.Fld){
+      put(OpCode.dup);
+    } else if (x.kind == Operand.Kind.Elem){
+      put(OpCode.dup2);
+    }
     // Do not switch kind to Stack after loading x.
     // We still need its type later on during the assign().
     x.kind = kindBeforeLoad;
