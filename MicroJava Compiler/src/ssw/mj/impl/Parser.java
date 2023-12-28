@@ -208,7 +208,7 @@ public final class Parser {
     while (sym == comma){
       scan();
       check(ident);
-      o = tab.insert(Obj.Kind.Var, t.val, type);
+      tab.insert(Obj.Kind.Var, t.val, type);
     }
     check(semicolon);
   }
@@ -271,7 +271,6 @@ public final class Parser {
 
     meth.locals = tab.curScope.locals();
     tab.closeScope();
-
     if (meth.type == Tab.noType){
       code.put(OpCode.exit);
       code.put(OpCode.return_);
@@ -391,7 +390,10 @@ public final class Parser {
       case return_:
         scan();
         if (sym == minus || startOfFactor.contains(sym)){
-          expr();
+          Operand returnVal = expr();
+          code.load(returnVal);
+          code.put(OpCode.exit);
+          code.put(OpCode.return_);
         }
         check(semicolon);
         break;
@@ -399,8 +401,15 @@ public final class Parser {
         scan();
         check(lpar);
         x = designator();
-        code.put(OpCode.read);
-
+        if (x.type == Tab.intType){
+          code.put(OpCode.read);
+        } else if (x.type == Tab.charType){
+          code.put(OpCode.bread);
+        } else {
+          error(READ_VALUE);
+        }
+        Operand y = new Operand(Tab.noType); // dummy operator required to call assign
+        code.assign(x, y);
         check(rpar);
         check(semicolon);
         break;
@@ -570,6 +579,9 @@ public final class Parser {
       } else if (sym == exp){
         scan();
         check(number);
+        if (x.type != Tab.intType){
+          error(NO_INT_OPERAND);
+        }
         code.load(x);
         int exponent = t.numVal;
         if (exponent == 0){
@@ -612,17 +624,19 @@ public final class Parser {
         scan();
         check(ident);
         Obj o = tab.find(t.val);
-        if (o.type == Tab.noType){
-          error(NO_ARRAY);
+        if (o.kind != Obj.Kind.Type){
+          error(NO_TYPE);
         }
-        //todo error(NO_TYPE);
         if (sym == lbrack){
           scan();
           Operand length = expr();
           if (length.type != Tab.intType){
-            error(NO_INT_OPERAND);
+            error(ARRAY_SIZE);
           }
+          code.load(length);
           code.put(OpCode.newarray);
+          Struct type = new Struct(o.type);
+          x = new Operand(type);
           if (o.type == Tab.charType){
             code.put(0);
           } else {
@@ -630,6 +644,10 @@ public final class Parser {
           }
           check(rbrack);
         } else {
+          if (o.type == Tab.intType || o.type == Tab.charType){
+            error(NO_CLASS_TYPE);
+          }
+          x = new Operand(o.type);
           code.put(OpCode.new_);
           code.put2(o.type.nrFields());
         }//todo somehow get return value
@@ -664,14 +682,14 @@ public final class Parser {
       } else if (sym == lbrack) {
         scan();
         code.load(x);
-        Operand y = expr();
+        Operand index = expr();
         if (x.type.kind != Struct.Kind.Arr){
           error(NO_ARRAY);
         }
-        if (y.type != Tab.intType){
-          error(NO_INT_OPERAND);
+        if (index.type != Tab.intType){
+          error(ARRAY_INDEX);
         }
-        code.load(y);
+        code.load(index);
         x.kind = Operand.Kind.Elem;
         x.type = x.type.elemType;
         check(rbrack);
