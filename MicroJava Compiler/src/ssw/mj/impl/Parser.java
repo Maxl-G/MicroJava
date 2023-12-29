@@ -6,7 +6,6 @@ import ssw.mj.scanner.Token;
 import ssw.mj.symtab.Obj;
 import ssw.mj.symtab.Struct;
 
-import java.awt.font.GlyphJustificationInfo;
 import java.util.EnumSet;
 
 import static ssw.mj.Errors.Message.*;
@@ -328,37 +327,35 @@ public final class Parser {
     switch(sym){
       case ident:
         Operand x = designator();
-        if (!assignableOperandKinds.contains(x.kind)){
-          error(CANNOT_ASSIGN_TO, x.kind.name());
-        }
         if (startOfAssignop.contains(sym)){
-          assignop();//todo: differentiate between different assignment operators
+          if (!assignableOperandKinds.contains(x.kind)){
+            error(CANNOT_ASSIGN_TO, x.kind.name());
+          }
+          OpCode calcType = assignop();
           Operand y = expr();
-          if (y.type == Tab.noType){
-            error(INVALID_CALL); // todo change position of error
+          if (calcType == OpCode.nop) {// assignop '='
+            if (y.type == Tab.noType){
+              error(INVALID_CALL); // todo change position of error
+            }
+            if (!y.type.assignableTo(x.type)){
+              error(INCOMP_TYPES);
+            }
+            code.assign(x, y);
+          } else {
+            compoundAssignment(x, y, calcType);
           }
-          if (!y.type.assignableTo(x.type)){
-            error(INCOMP_TYPES);
-          }
-          code.assign(x, y);
+
+
         } else {
           switch(sym){
             case lpar:
               actPars();
               break;
             case pplus:
-              if (x.type != Tab.intType){
-                error(NO_INT_OPERAND);
-              }
-              scan();
-              code.inc(x, 1);
+              increment(x, 1);
               break;
             case mminus:
-              if (x.type != Tab.intType){
-                error(NO_INT_OPERAND);
-              }
-              scan();
-              code.inc(x, -1);
+              increment(x, -1);
               break;
             default: error(DESIGN_FOLLOW);
           }
@@ -449,29 +446,38 @@ public final class Parser {
     }
   }
 
-  private void assignop(){
+  private OpCode assignop(){
+    OpCode code;
     switch(sym){
       case assign:
         scan();
+        code = OpCode.nop;
         break;
       case plusas:
         scan();
+        code = OpCode.add;
         break;
       case minusas:
         scan();
+        code = OpCode.sub;
         break;
       case timesas:
         scan();
+        code = OpCode.mul;
         break;
       case slashas:
         scan();
+        code = OpCode.div;
         break;
       case remas:
         scan();
+        code = OpCode.rem;
         break;
       default:
         error(ASSIGN_OP);
+        code = OpCode.nop;
     }
+    return code;
   }
 
   private void actPars(){
@@ -757,6 +763,54 @@ public final class Parser {
       scan();
     } while (!recoverStatementSet.contains(sym));
     errorDistance = 0;
+  }
+  // ------------------------------------
+
+  // Private helper methods
+  /**
+   * handles ++ and --
+   */
+  private void increment(Operand x, int n){
+    if (x.type != Tab.intType){
+      error(NO_INT_OPERAND);
+    }
+    if (!assignableOperandKinds.contains(x.kind)){
+      error(CANNOT_ASSIGN_TO, x.kind.name());
+    }
+    scan();
+    if (x.kind == Operand.Kind.Local){
+      //code.compoundAssignmentPrepare(x);
+      code.inc(x, n);
+    } else {
+      compoundAssignment(x, new Operand(n), OpCode.add);
+    }
+  }
+
+  /**
+   * handles +=, -=, *=, /=, %=
+   * @param x left side
+   * @param y right side
+   * @param calcType type of the calculation
+   */
+  private void compoundAssignment(Operand x, Operand y, OpCode calcType){
+    if (x.type != Tab.intType || y.type != Tab.intType){
+      error(NO_INT_OPERAND);
+    }
+    code.compoundAssignmentPrepare(x);
+    if (x.kind == Operand.Kind.Elem){
+      code.load(y);
+      code.put(calcType);
+      code.put(OpCode.astore);
+    } else if (x.kind == Operand.Kind.Fld){
+      code.load(y);
+      code.put(calcType);
+      code.put(OpCode.putfield);
+      code.put2(x.adr);
+    } else {
+      code.load(y);
+      code.put(calcType);
+      code.assign(x, new Operand(Tab.noType)); // dummy object, todo change
+    }
   }
 
   // ====================================

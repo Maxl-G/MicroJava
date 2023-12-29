@@ -294,6 +294,7 @@ public final class Code {
       put(x.adr);
       put(n);
     } else {
+
       assign(x, new Operand(n));
     }
   }
@@ -368,8 +369,12 @@ public final class Code {
     // an compound assignment (e.g., arr[2] += 4) need to correctly use dup or dup2. Implement here.
     if (x.kind == Operand.Kind.Fld){
       put(OpCode.dup);
+      load(x);
     } else if (x.kind == Operand.Kind.Elem){
       put(OpCode.dup2);
+      load(x);
+    } else {
+      load(x);
     }
     // Do not switch kind to Stack after loading x.
     // We still need its type later on during the assign().
