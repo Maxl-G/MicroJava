@@ -236,15 +236,12 @@ public final class Code {
   // TODO Exercise 5-6: implementation of code generation
   // ======================================================
 
-  // TODO Exercise 5: Various code generation methods such as load or assign
-
-
+  // Various code generation methods such as load or assign
 
   /**
    * Load the operand x onto the expression stack.
    */
   public void load(Operand x) {
-    // TODO Exercise 5
     switch (x.kind){
       case Con:
         loadConst(x.val);
@@ -288,7 +285,6 @@ public final class Code {
    * Generate an increment instruction that increments x by n.
    */
   public void inc(Operand x, int n) {
-    // TODO Exercise 5
     if (x.kind == Operand.Kind.Local && -128 <= n && n < 128){
       put(OpCode.inc);
       put(x.adr);
@@ -303,7 +299,6 @@ public final class Code {
    * Generate an assignment x = y.
    */
   public void assign(Operand x, Operand y) {
-    // TODO Exercise 5
     load(y);
     switch (x.kind) {
       case Local:
@@ -343,7 +338,6 @@ public final class Code {
    * Load an integer constant onto the expression stack.
    */
   public void loadConst(int n) {
-    // TODO Exercise 5
     switch (n){
       case -1 -> put(OpCode.const_m1);
       case 0 -> put(OpCode.const_0);
@@ -365,7 +359,7 @@ public final class Code {
   public void compoundAssignmentPrepare(Operand x) {
     Operand.Kind kindBeforeLoad = x.kind;
 
-    // TODO Exercise 5: Field accesses (such as x.y) or array accesses (such as arr[2]) on the left-hand side of
+    // Field accesses (such as x.y) or array accesses (such as arr[2]) on the left-hand side of
     // an compound assignment (e.g., arr[2] += 4) need to correctly use dup or dup2. Implement here.
     if (x.kind == Operand.Kind.Fld){
       put(OpCode.dup);

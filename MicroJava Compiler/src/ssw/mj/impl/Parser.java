@@ -332,16 +332,15 @@ public final class Parser {
             error(CANNOT_ASSIGN_TO, x.kind.name());
           }
           OpCode calcType = assignop();
-          Operand y = expr();
           if (calcType == OpCode.nop) {// assignop '='
-            if (y.type == Tab.noType){
-              error(INVALID_CALL); // todo change position of error
-            }
+            Operand y = expr();
             if (!y.type.assignableTo(x.type)){
               error(INCOMP_TYPES);
             }
             code.assign(x, y);
           } else {
+            code.compoundAssignmentPrepare(x);
+            Operand y = expr();
             compoundAssignment(x, y, calcType);
           }
 
@@ -405,8 +404,7 @@ public final class Parser {
         } else {
           error(READ_VALUE);
         }
-        Operand y = new Operand(Tab.noType); // dummy operator required to call assign
-        code.assign(x, y);
+        code.assign(x, new Operand(Tab.noType));
         check(rpar);
         check(semicolon);
         break;
@@ -614,6 +612,13 @@ public final class Parser {
       case ident:
         x = designator();
         if (sym == lpar){
+          if (x.kind != Operand.Kind.Meth){
+            error(NO_METH);
+          }
+          if (x.type == Tab.noType){
+            error(INVALID_CALL);
+          }
+          x.kind = Operand.Kind.Stack;
           actPars();
         }
         break;
@@ -656,7 +661,7 @@ public final class Parser {
           x = new Operand(o.type);
           code.put(OpCode.new_);
           code.put2(o.type.nrFields());
-        }//todo somehow get return value
+        }
         break;
       case lpar:
         scan();
@@ -665,7 +670,7 @@ public final class Parser {
         break;
       default:
         error(INVALID_FACT);
-        x = new Operand(tab.noObj, this);//todo maybe change
+        x = new Operand(tab.noObj, this);
     }
     return x;
   }
@@ -779,9 +784,9 @@ public final class Parser {
     }
     scan();
     if (x.kind == Operand.Kind.Local){
-      //code.compoundAssignmentPrepare(x);
       code.inc(x, n);
     } else {
+      code.compoundAssignmentPrepare(x);
       compoundAssignment(x, new Operand(n), OpCode.add);
     }
   }
@@ -796,7 +801,6 @@ public final class Parser {
     if (x.type != Tab.intType || y.type != Tab.intType){
       error(NO_INT_OPERAND);
     }
-    code.compoundAssignmentPrepare(x);
     if (x.kind == Operand.Kind.Elem){
       code.load(y);
       code.put(calcType);
@@ -809,7 +813,7 @@ public final class Parser {
     } else {
       code.load(y);
       code.put(calcType);
-      code.assign(x, new Operand(Tab.noType)); // dummy object, todo change
+      code.assign(x, new Operand(Tab.noType));
     }
   }
 
