@@ -125,10 +125,6 @@ public final class Parser {
   private final EnumSet<Token.Kind> recoverDeclSet = EnumSet.of(final_, ident, class_, rbrace, eof);
   private final EnumSet<Token.Kind> recoverStatementSet = EnumSet.of(if_, while_, break_, return_, read, print, semicolon, eof);
 
-  // Sets for code generation
-  private final EnumSet<Operand.Kind> assignableOperandKinds = EnumSet.of(Operand.Kind.Local, Operand.Kind.Static, Operand.Kind.Fld, Operand.Kind.Elem);
-
-
   // ---------------------------------
   // One top-down parsing method per production
 
@@ -328,7 +324,7 @@ public final class Parser {
       case ident:
         Operand x = designator();
         if (startOfAssignop.contains(sym)){
-          if (!assignableOperandKinds.contains(x.kind)){
+          if (!x.canBeAssignedTo()){
             error(CANNOT_ASSIGN_TO, x.kind.name());
           }
           OpCode calcType = assignop();
@@ -779,7 +775,7 @@ public final class Parser {
     if (x.type != Tab.intType){
       error(NO_INT_OPERAND);
     }
-    if (!assignableOperandKinds.contains(x.kind)){
+    if (!x.canBeAssignedTo()){
       error(CANNOT_ASSIGN_TO, x.kind.name());
     }
     scan();
