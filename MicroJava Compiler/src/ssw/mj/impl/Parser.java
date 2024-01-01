@@ -1,6 +1,7 @@
 package ssw.mj.impl;
 
 import ssw.mj.Errors.Message;
+import ssw.mj.codegen.Label;
 import ssw.mj.codegen.Operand;
 import ssw.mj.scanner.Token;
 import ssw.mj.symtab.Obj;
@@ -110,7 +111,6 @@ public final class Parser {
 
   // ===============================================
 
-  // TODO Exercise 5-6: Code generation
   // ===============================================
 
   // Error distance
@@ -225,10 +225,13 @@ public final class Parser {
     check(rbrace);
   }
 
-  private Obj methodDecl(){
+  private void methodDecl(){
     Struct type = Tab.noType;
     if (sym == ident){
       type = type();
+      if (type.isRefType()){
+        error(INVALID_METH_RETURN_TYPE);
+      }
     } else if (sym == void_){
       scan();
     } else {
@@ -262,9 +265,8 @@ public final class Parser {
     code.put(OpCode.enter);
     code.put(meth.nPars);
     code.put(tab.curScope.nVars());
-    block();
-
     meth.locals = tab.curScope.locals();
+    block(null, type);
     tab.closeScope();
     if (meth.type == Tab.noType){
       code.put(OpCode.exit);
@@ -273,8 +275,6 @@ public final class Parser {
       code.put(OpCode.trap);
       code.put(1);
     }
-
-    return meth;
   }
 
   private void formPars(){
@@ -304,12 +304,12 @@ public final class Parser {
     return type;
   }
 
-  private void block(){
+  private void block(Label endLoop, Struct curMethReturnType){
     check(lbrace);
 
     while (true){
       if (startOfStatement.contains(sym)){
-        statement();
+        statement(endLoop, curMethReturnType);
       } else if (sym == rbrace || sym == eof){
         break;
       } else {
@@ -319,7 +319,7 @@ public final class Parser {
     check(rbrace);
   }
 
-  private void statement(){
+  private void statement(Label endLoop, Struct curMethReturnType){
     switch(sym){
       case ident:
         Operand x = designator();
@@ -339,12 +339,14 @@ public final class Parser {
             Operand y = expr();
             compoundAssignment(x, y, calcType);
           }
-
-
         } else {
           switch(sym){
             case lpar:
-              actPars();
+              actPars(x);
+              code.methodCall(x);
+              if (x.type != Tab.noType){
+                code.put(OpCode.pop);// unused return value
+              }
               break;
             case pplus:
               increment(x, 1);
@@ -360,32 +362,59 @@ public final class Parser {
       case if_:
         scan();
         check(lpar);
-        condition();
+        Operand c = condition();
+        code.fJump(c.op, c.fLabel);
+        c.tLabel.here();
         check(rpar);
-        statement();
+        statement(endLoop, curMethReturnType);
+        Label endIf = new Label(code);
         if (sym == else_){
           scan();
-          statement();
+          code.jump(endIf);
+          c.fLabel.here();
+          statement(endLoop, curMethReturnType);
+        } else {
+          c.fLabel.here();
         }
+        endIf.here();
         break;
       case while_:
         scan();
         check(lpar);
-        condition();
+        Label beginLoop = new Label(code);
+        beginLoop.here();
+        c = condition();
+        code.fJump(c.op, c.fLabel);
+        c.tLabel.here();
         check(rpar);
-        statement();
+        statement(c.fLabel, curMethReturnType);
+        code.jump(beginLoop);
+        c.fLabel.here();
         break;
       case break_:
         scan();
+        if (endLoop == null){
+          error(NO_LOOP);
+        } else {
+          code.jump(endLoop);
+        }
         check(semicolon);
         break;
       case return_:
         scan();
         if (sym == minus || startOfFactor.contains(sym)){
+          if (curMethReturnType == Tab.noType){
+            error(RETURN_VOID);
+          }
           Operand returnVal = expr();
+          if (!returnVal.type.assignableTo(curMethReturnType)){
+            error(NON_MATCHING_RETURN_TYPE);
+          }
           code.load(returnVal);
           code.put(OpCode.exit);
           code.put(OpCode.return_);
+        } else if (curMethReturnType != Tab.noType){
+          error(RETURN_NO_VAL);
         }
         check(semicolon);
         break;
@@ -430,7 +459,7 @@ public final class Parser {
         check(semicolon);
         break;
       case lbrace:
-        block();
+        block(endLoop, curMethReturnType);
         break;
       case semicolon:
         scan();
@@ -474,63 +503,118 @@ public final class Parser {
     return code;
   }
 
-  private void actPars(){
+  private void actPars(Operand m){
     check(lpar);
+    if (m.kind != Operand.Kind.Meth){
+      error(NO_METH);
+      m.obj = tab.noObj;
+    }
+    var fPars = m.obj.locals.values().iterator(); // obj.locals is LinkedHashMap that guarantees correct order
+    int nAPars = 0;
     if (sym == minus || startOfFactor.contains(sym)){
-      expr();
+      Operand ap = expr();
+      code.load(ap);
+      if (fPars.hasNext()){
+        Obj fp = fPars.next();
+        if (!ap.type.assignableTo(fp.type)){
+          error(PARAM_TYPE);
+        }
+        nAPars++;
+      } else {
+        error(MORE_ACTUAL_PARAMS);
+      }
       while (sym == comma){
         scan();
-        expr();
+        ap = expr();
+        code.load(ap);
+        if (fPars.hasNext()){
+          Obj fp = fPars.next();
+          if (!ap.type.assignableTo(fp.type)){
+            error(PARAM_TYPE);
+          }
+          nAPars++;
+        } else {
+          error(MORE_ACTUAL_PARAMS);
+        }
       }
+    }
+    if (nAPars < m.obj.nPars){
+      error(LESS_ACTUAL_PARAMS);
     }
     check(rpar);
   }
 
-  private void condition(){
-    condTerm();
+  private Operand condition(){
+    Operand x = condTerm();
     while (sym == or){
+      code.tJump(x.op, x.tLabel);
       scan();
-      condTerm();
+      x.fLabel.here();
+      Operand y = condTerm();
+      x.fLabel = y.fLabel;
+      x.op = y.op;
     }
+    return x;
   }
 
-  private void condTerm(){
-    condFact();
+  private Operand condTerm(){
+    Operand x = condFact();
     while (sym == and){
+      code.fJump(x.op, x.fLabel);
       scan();
-      condFact();
+      Operand y = condFact();
+      x.op = y.op;
     }
+    return x;
   }
 
-  private void condFact(){
-    expr();
-    relop();
-    expr();
+  private Operand condFact(){
+    Operand l = expr();
+    Code.CompOp op = relop();
+    Operand r = expr();
+    if (!l.type.compatibleWith(r.type)){
+      error(INCOMP_TYPES);
+    }
+    if (l.type.isRefType() && op != Code.CompOp.eq && op != Code.CompOp.ne){
+      error(EQ_CHECK);
+    }
+    code.load(l);
+    code.load(r);
+    return new Operand(op, code);
   }
 
-  private void relop(){
+  private Code.CompOp relop(){
+    Code.CompOp op;
     switch (sym){
       case eql:
         scan();
+        op = Code.CompOp.eq;
         break;
       case neq:
         scan();
+        op = Code.CompOp.ne;
         break;
       case gtr:
         scan();
+        op = Code.CompOp.gt;
         break;
       case geq:
         scan();
+        op = Code.CompOp.ge;
         break;
       case lss:
         scan();
+        op = Code.CompOp.lt;
         break;
       case leq:
         scan();
+        op = Code.CompOp.le;
         break;
       default:
         error(REL_OP);
+        op = Code.CompOp.eq; // op does not matter
     }
+    return op;
   }
 
   private Operand expr(){
@@ -614,8 +698,12 @@ public final class Parser {
           if (x.type == Tab.noType){
             error(INVALID_CALL);
           }
+          actPars(x);
+          code.methodCall(x);
           x.kind = Operand.Kind.Stack;
-          actPars();
+          if (x.type == Tab.noType){
+            error(INVALID_CALL);
+          }
         }
         break;
       case number:

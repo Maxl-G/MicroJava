@@ -8,10 +8,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import static ssw.mj.Errors.Message.*;
-import static ssw.mj.Errors.Message.NO_INT_OPERAND;
 
 public final class Code {
 
@@ -233,7 +231,7 @@ public final class Code {
   }
 
   // ======================================================
-  // TODO Exercise 5-6: implementation of code generation
+  // implementation of code generation
   // ======================================================
 
   // Various code generation methods such as load or assign
@@ -378,14 +376,21 @@ public final class Code {
   // --------------------
 
   public void methodCall(Operand x) {
-    // TODO Exercise 6
+    if (x.obj == parser.tab.ordObj || x.obj == parser.tab.chrObj);
+    else if (x.obj == parser.tab.lenObj){
+      put(OpCode.arraylength);
+    } else {
+      put(OpCode.call);
+      put2(x.obj.adr - (pc - 1));
+    }
   }
 
   /**
    * Unconditional jump.
    */
   public void jump(Label lab) {
-    // TODO Exercise 6
+    put(OpCode.jmp);
+    lab.put();
   }
 
   /**
@@ -393,7 +398,8 @@ public final class Code {
    * jump chain.
    */
   public void tJump(CompOp op, Label to) {
-    // TODO Exercise 6
+    put(CompOp.toOpCode(op));
+    to.put();
   }
 
   /**
@@ -401,7 +407,8 @@ public final class Code {
    * jump chain.
    */
   public void fJump(CompOp op, Label to) {
-    // TODO Exercise 6
+    put(CompOp.toOpCode(CompOp.invert(op)));
+    to.put();
   }
 
   // =================================================
